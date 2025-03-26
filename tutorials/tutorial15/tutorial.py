@@ -28,7 +28,7 @@ problem = TimeSpaceProblem()
 problem.discretise_domain(4000, "random", domains=["L_u"])
 problem.discretise_domain(250, "grid", domains=["step1", "step3"])
 problem.discretise_domain(251, "grid", domains=["step2"])
-problem.discretise_domain(101, "grid", domains=["u0","u1"])
+problem.discretise_domain(1001, "grid", domains=["u0","u1"])
 
 #print("Input points:", problem.input_pts)
 
@@ -43,7 +43,7 @@ seed_everything(42, workers=True)
 
 # build the model
 model = FeedForward(
-    layers=[16, 16, 16, 16],
+    layers=[16,16,16,16],
     func=torch.nn.Tanh,  # Tanh,
     output_dimensions=len(problem.output_variables),
     input_dimensions=len(problem.input_variables),
@@ -73,12 +73,12 @@ trainer = Trainer(
 trainer.train()
 trainer.test()
 
-input_test = CartesianDomain({"x": [0, 1], "t": [0,1]}).sample(101, mode='grid')
+input_test = CartesianDomain({"x": [0, 1], "t": [0,1]}).sample(1001, mode='grid')
 #input_test = CartesianDomain({"x": [0.1, 20], "t": [1, 70]}).sample(100, mode='grid')
 output_test = pinn(input_test)
 u = output_test.extract(["u"])
 
-plt.figure(figsize=(12, 10))
+plt.figure(figsize=(6, 5))
 plt.scatter(input_test.extract(["x"]), input_test.extract(["t"]), c=u.detach().numpy(), cmap='coolwarm')
 plt.colorbar()
 plt.title('u')

@@ -38,18 +38,6 @@ class TimeSpaceProblem(TimeDependentProblem, SpatialProblem):
 
         res = u_t - gamma * nabla_u + u**3 - u
         return res
-        
-
-    def initial_cond_V(input_, output_):
-        x = input_.extract(["x"])
-        #return output_.extract(["V"]) - torch.exp(-0.8 * x)  # V_0 #original
-        return output_.extract(["V"])-torch.exp(-0.8 * x)
-    def initial_cond_W(input_, output_):
-        x = input_.extract(["x"])
-        return output_.extract(["W"]) - 2.5 * torch.exp(-0.8 * x)  # W_0
-        #return output_.extract(["W"]) - 2* torch.exp(-0.8 * x)  # W_0 #original
-    
-
     # conditions to hold
     # specify the fixed gradient direction (ex x,y...)
     conditions = {
