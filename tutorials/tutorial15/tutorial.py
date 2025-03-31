@@ -100,7 +100,7 @@ trainer = Trainer(
 trainer.train()
 trainer.test()
 
-input_test = CartesianDomain({"x": [0, 1], "t": [0, 1]}).sample(501, mode='grid')
+'''input_test = CartesianDomain({"x": [0, 1], "t": [0, 1]}).sample(501, mode='grid')
 output_test = pinn(input_test)
 u = output_test.extract(["u"])
 
@@ -110,4 +110,70 @@ plt.colorbar()
 plt.title('u')
 plt.grid()
 plt.tight_layout() 
+plt.show()''' #PRE-PAPER-SOLUTION
+import numpy as np
+import matplotlib.pyplot as plt
+
+data_saved = np.load("saved_solution.npz")
+data_fdm = np.load("fdm_solution.npz")
+
+x_saved, t_saved, u_saved = data_saved["x"], data_saved["t"], data_saved["u"]
+x_fdm, t_fdm, u_fdm = data_fdm["x"], data_fdm["t"], data_fdm["u"]
+input_test = CartesianDomain({"x": [0, 1], "t": [0, 1]}).sample(501, mode="grid")
+output_test = pinn(input_test)
+u_pinn = output_test.extract(["u"]).detach().numpy().reshape(501, 501).T
+
+
+print("Shape of u_saved:", u_saved.shape)
+print("Shape of u_fdm:", u_fdm.shape)
+print("Shape of u_pinn:", u_pinn.shape)
+
+print("Max value of u_saved:", np.max(u_saved))
+print("Min value of u_saved:", np.min(u_saved))
+print("Max value of u_fdm:", np.max(u_fdm))
+print("Min value of u_fdm:", np.min(u_fdm))
+print("Max value of u_pinn:", np.max(u_pinn))
+print("Min value of u_pinn:", np.min(u_pinn))
+
+
+
+'''diff1 = u_pinn - u_saved
+diff2 = u_pinn - u_fdm
+
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.imshow(diff1, extent=[0, 1, 0, 1], origin="lower", cmap="bwr", aspect="auto")
+plt.colorbar(label="Difference")
+plt.xlabel("x")
+plt.ylabel("t")
+plt.title("Difference Between PINN and Paper Solution")
+
+plt.subplot(1, 2, 2)
+plt.imshow(diff2, extent=[0, 1, 0, 1], origin="lower", cmap="bwr", aspect="auto")
+plt.colorbar(label="Difference")
+plt.xlabel("x")
+plt.ylabel("t")
+plt.title("Difference Between PINN and FDM Solution")
+
+plt.tight_layout()
+plt.show()'''
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 3, 1)
+plt.imshow(u_saved, extent=[0, 1, 0, 1], origin="lower", cmap="viridis")
+plt.colorbar()
+plt.title("Saved Solution")
+
+plt.subplot(1, 3, 2)
+plt.imshow(u_pinn, extent=[0, 1, 0, 1], origin="lower", cmap="viridis")
+plt.colorbar()
+plt.title("PINN Solution")
+
+plt.subplot(1, 3, 3)
+plt.imshow(u_fdm, extent=[0, 1, 0, 1], origin="lower", cmap="viridis")
+plt.colorbar()
+plt.title("FDM Solution")
+
+plt.tight_layout()
 plt.show()
