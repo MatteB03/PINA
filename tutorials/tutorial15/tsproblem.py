@@ -25,14 +25,13 @@ from pina.optim import TorchOptimizer
 class TimeSpaceProblem(TimeDependentProblem, SpatialProblem):
     output_variables = ["u"]
     spatial_domain = CartesianDomain({"x": [0, 1]})
-    temporal_domain = CartesianDomain({"t": [0,1]})
+    temporal_domain = CartesianDomain({"t": [0, 1]})
 
     # defining the ode equation
     def equation_4p5(input_, output_):
         # computing the derivative
         u_t = grad(output_, input_, components=["u"], d=["t"])
         nabla_u = laplacian(output_, input_, components=["u"], d=["x"])
-        
         u = output_.extract(["u"])
         gamma = 1
 
