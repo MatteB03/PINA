@@ -12,7 +12,7 @@ num_boundary_samples = 1000
 num_collocation_points = 5000
 mu_exact = 2.0
 mu_guess = 1.0
-l = w / 3
+l = w/3
 
 # Boundary function
 def boundary(x):
@@ -24,7 +24,7 @@ def boundary(x):
     else:
         return w, y - T - w
 
-# Initial condition function
+# Define the boundary condition solution
 def sol_bound(a):
     if a[1] != 0.0:
         return 0.0
@@ -39,7 +39,7 @@ tf.random.set_seed(100)
 # Generate random uniform samples for the boundary conditions
 unif = tf.random.uniform(shape=[num_boundary_samples], maxval=1.0)
 
-# Generate boundary points and training data
+# Generate boundary points and train data
 b_points = tf.stack(tf.map_fn(fn=lambda x: boundary(x), elems=unif, dtype=(tf.float32, tf.float32)), axis=1)
 u_train = tf.map_fn(fn=lambda x: sol_bound(x), elems=b_points, dtype=(tf.float32))
 
@@ -89,9 +89,11 @@ for i in range(num_epochs):
     with tf.GradientTape() as tape:
         loss = loss_fit() + loss_PDE()
     
+    # Compute gradients and apply them
     grads = tape.gradient(loss, model.trainable_variables)
     opt.apply_gradients(zip(grads, model.trainable_variables))
 
+    # Print progress every 100 iterations
     if i % 100 == 0:
         print(f'iter = {i}, mu = {mu.numpy():.2f}, loss_fit = {last_loss_fit.numpy():.6f}, loss_PDE = {last_loss_PDE.numpy():.6f}')
 
@@ -115,52 +117,45 @@ for i in range(nx + 1):
     if (i * dx - w / 2)**2 < l**2 / 4:
         u0[i] = 1.0
 
-# Time points for testing
+# Define time points for testing
 t_test = [100, 500, 2000, 5000]
 xx = np.linspace(0, w, num=nx + 1, dtype=np.float32)
-t_vals = np.linspace(0, T, num=50)  # Full 50 time steps
 
-# Compute full PINN solution (all 50 time steps)
-pinn_solutions_full = []
-for t in t_vals:
-    test_points = np.stack((xx, np.full_like(xx, t)), axis=1)
-    pinn_solutions_full.append(model.predict(test_points))
+# Compute PINN solution at specific time steps
+pinn_solutions = []
+for t in t_test:
+    test_points = np.stack((xx, np.full_like(xx, t * dt)), axis=1)
+    pinn_solutions.append(model.predict(test_points))
 
-pinn_solutions_full = np.array(pinn_solutions_full)  # Shape: (50, nx+1)
+pinn_solutions = np.array(pinn_solutions)
 
-# Compute full FDM solution (all 50 time steps)
-fdm_solutions_full = np.zeros((50, nx + 1))
-for i in range(50):
-    for _ in range(int(t_vals[i] / dt)):
-        u0, u = do_timestep(u0, u)
-    fdm_solutions_full[i, :] = u.copy()
+# Save the exact PINN predictions
+np.savez("saved_solution.npz", x=xx, t=t_test, u=pinn_solutions)
 
-# Save full solutions
-np.savez("saved_full_solution.npz", x=xx, t=t_vals, u_pinn=pinn_solutions_full, u_fdm=fdm_solutions_full)
-
-#%%%%%%%%%%%%%%%%%% Plot Only 4 Key Time Steps
+#%%%%%%%%%%%%%%%%%% Plot Everything
 fig, axes = plt.subplots(2, 4, figsize=(12, 8))
 
-# Load saved solution
-data_saved = np.load("saved_full_solution.npz")
-u_pinn_saved = data_saved["u_pinn"]
-u_fdm_saved = data_saved["u_fdm"]
+# Load old PINN solution
+data_saved = np.load("saved_solution.npz")
+u_pinn_old = data_saved["u"]
 
 for i, t in enumerate(t_test):
-    t_idx = np.searchsorted(t_vals, t * dt)  # Find closest time index
+    # Compute FDM solution at this time step
+    for _ in range(t):
+        u0, u = do_timestep(u0, u)
 
-    # Plot new PINN vs FDM
+    # Plot original PINN vs FDM
     ax1 = axes[0, i]
-    ax1.plot(xx, u_pinn_saved[t_idx], "r-", label="New PINN")
-    ax1.plot(xx, u_fdm_saved[t_idx], "k-", label="FDM")
+    ax1.plot(xx, pinn_solutions[i], "r-", label="New PINN")
+    ax1.plot(xx, u, "k-", label="FDM")
     ax1.set_title(f"t = {t * dt:.3f}")
     ax1.set_ylim([-0.1, 1.5])
     ax1.legend()
 
-    # Plot old PINN vs FDM
+    # Plot saved old PINN solution for verification
     ax2 = axes[1, i]
-    ax2.plot(xx, u_pinn_saved[t_idx], "b--", label="Saved Old PINN")
-    ax2.plot(xx, u_fdm_saved[t_idx], "k-", label="FDM")
+    ax2.plot(xx, u_pinn_old[i], "b--", label="Saved Old PINN")
+    ax2.plot(xx, u, "k-", label="FDM")
     ax2.set_ylim([-0.1, 1.5])
     ax2.legend()
 
