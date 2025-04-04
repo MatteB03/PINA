@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load new PINN output
-output_test = torch.load("pinn_output_post_tuning.pt")
+output_test = torch.load("pinn_output_post_tuning.pt", weights_only=False)
 u_pinn_new = output_test.extract(["u"]).detach().numpy().reshape(50, 50).T  # Reshape to (time, space)
 
 # Load old PINN & FDM output

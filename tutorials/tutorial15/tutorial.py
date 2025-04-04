@@ -78,14 +78,14 @@ model = FeedForward(
 pinn = PINN(
     problem,
     model,
-    optimizer=TorchOptimizer(torch.optim.Adam, lr=5e-3, weight_decay=0),
+    optimizer=TorchOptimizer(torch.optim.Adam, lr=5e-5, weight_decay=0),
     loss=torch.nn.MSELoss()
 )  
 
 from lightning.pytorch.loggers import TensorBoardLogger
 trainer = Trainer(
     solver=pinn,
-    max_epochs=5000,
+    max_epochs= 20000,
     accelerator="cpu",
     logger=TensorBoardLogger(save_dir="training_logs"),
     enable_model_summary=False,

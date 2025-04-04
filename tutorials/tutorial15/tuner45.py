@@ -75,7 +75,7 @@ def Train_PINN(config):
     solver = PINN(
     problem,
     model,
-    optimizer=TorchOptimizer(torch.optim.Adam, lr=config["lr"], weight_decay=0),
+    optimizer=TorchOptimizer(torch.optim.Adam, lr = 5e-3, weight_decay=0),
     loss=torch.nn.MSELoss()
 )  
     trainer= Trainer(solver, max_epochs=config["epochs"],accelerator="cpu",
@@ -91,7 +91,7 @@ def Train_PINN(config):
     trainer.train()
     trainer.test()
 config = {
-    "lr":tune.choice([1e-4,2.5e-4,5e-4,1e-3,2.5e-3,5e-3]),
+    #"lr":tune.choice([1e-5,2.5e-5,5e-5,1e-4,2.5e-4,5e-4,1e-3,2.5e-3,5e-3]),
     "epochs":tune.choice([5000,7500,10000,12500,15000])
     }
 
@@ -101,7 +101,7 @@ tune_analysis = tune.run(
     metric="loss",
     mode="min",
     config=config,
-    num_samples=30,  # Number of trials to run
+    num_samples=15,  # Number of trials to run
     scheduler=ASHAScheduler(max_t=100, grace_period=10, reduction_factor=2)  # ASHA for early stopping
 )
 best_config = tune_analysis.get_best_config(metric="loss", mode="min")
