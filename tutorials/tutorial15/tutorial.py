@@ -78,7 +78,7 @@ model = FeedForward(
 pinn = PINN(
     problem,
     model,
-    optimizer=TorchOptimizer(torch.optim.Adam, lr=5e-5, weight_decay=0),
+    optimizer=TorchOptimizer(torch.optim.Adam, lr=5e-5, weight_decay=0), ##try varying lr
     loss=torch.nn.MSELoss()
 )  
 
