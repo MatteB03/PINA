@@ -22,6 +22,8 @@ import random
 from pina.optim import TorchOptimizer
 
 from lightning.pytorch.loggers import TensorBoardLogger
+from pytorch_lightning import seed_everything
+seed_everything(42, workers=True)
 
 L = 100
 T = 2.0
@@ -101,8 +103,13 @@ def Train_PINN(config):
                           sample_rules={'x':{'n': 100, 'mode':'grid'},
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20,'mode':'grid'}})
+    
+    K_weight= config["K"]
+    rho1 = 10/K_weight
+    rho2 = 10/(K_weight)**2
+
     model = FeedForward(
-    layers=config["layers"],
+    layers=[10,20,20,10],
     func=torch.nn.Tanh,  # Tanh,
     output_dimensions=len(problem.output_variables),
     input_dimensions=len(problem.input_variables))
@@ -111,16 +118,13 @@ def Train_PINN(config):
     model,
     optimizer=TorchOptimizer(torch.optim.Adam, lr = config["lr"], weight_decay=0),
     loss=torch.nn.MSELoss(),
-    weighting=ScalarWeighting({"x_bound_0_loss":1,
-                               "x_bound_1_loss":1,
-                               "y_bound_0_loss":1,
-                               "y_bound_1_loss":1,
-                               "L_u_loss":1,
-                               "u_1_loss":config["weight"],
-                               "u_0_loss":1
+    weighting=ScalarWeighting({"x_bound_0_loss":rho1, "x_bound_1_loss":rho1,
+                               "y_bound_0_loss":rho1, "y_bound_1_loss":rho1,
+                               "L_u_loss":rho2, "u_0_loss":rho2,
+                               "u_1_loss":rho2, "u_1_border_loss": rho2
                                 })
 )  
-    trainer= Trainer(solver, max_epochs=5000,accelerator="cpu",
+    trainer= Trainer(solver, max_epochs=2000,accelerator="cpu",
     logger=TensorBoardLogger(save_dir="training_logs"),
     enable_progress_bar=False,
     enable_model_summary=False,
@@ -144,7 +148,7 @@ def Train_PINN(config):
         y = input_test.extract(["y"]).detach().numpy()
 
         sc = axes[idx].scatter(x, y, c=u, s=5)
-        axes[idx].set_title(f"u(x, y, t={t_val})")
+        axes[idx].set_title(f"u(x, y, t={t_val}), K: {config['K']} | lr: {config['lr']}")
         axes[idx].set_xlabel("x")
         axes[idx].set_ylabel("y")
         axes[idx].set_aspect('equal')
@@ -152,9 +156,6 @@ def Train_PINN(config):
 
     plt.tight_layout()
     plt.show()
-    # Prepare a title that contains configuration info
-    config_title = f"Layers: {config['layers']} | lr: {config['lr']}"
-    fig.suptitle(config_title, fontsize=16)
     
     # Directory where the plot will be saved
 # Directory where the plot will be saved
@@ -178,9 +179,8 @@ def Train_PINN(config):
 
     
 config = {
-    "layers":tune.choice([[16,16,16,16],[10,20,20,10],[32,32,32,32]]),
     "lr":tune.choice([1e-4, 1e-3]),
-    "weight":tune.choice([1,4])
+    "K":tune.choice([8, 50, 103.2])
     }
 
 tune_analysis = tune.run(

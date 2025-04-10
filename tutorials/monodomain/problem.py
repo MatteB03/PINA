@@ -15,6 +15,8 @@ from pina.solver import PINN
 from pina.model import FeedForward
 
 from pina.optim import TorchOptimizer
+from pytorch_lightning import seed_everything
+seed_everything(42, workers=True)
 
 L = 100
 T = 2.0
@@ -26,7 +28,12 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
     temporal_domain = CartesianDomain({"t": [0, T]})
     circle_border = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]}, sample_surface=True)
     circle = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]})
+    circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]}, sample_surface=True)
+    circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]})
+
     outside_circle = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [0,0]}),circle])
+    outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [2.0,2.0]}),circle_2])
+
     
     # defining the ode equation
     def monodomain_equation(input_, output_):
@@ -70,17 +77,26 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
             domain=CartesianDomain({"x":[0,L],"y":1,"t":[0,T]}),
             equation= FixedGradient(0.0, components=["u"], d=["y"])),
         "u_1": Condition(
+            domain= circle,
+            equation= FixedValue(1)),
+        "u_1_border": Condition(
             domain= circle_border,
             equation= FixedValue(1)),
         "u_0": Condition(
             domain= outside_circle,
-            equation= FixedValue(0)
-        )
+            equation= FixedValue(0)),
+        "u_1_2": Condition(
+            domain= circle_2,
+            equation= FixedValue(1)),
+        "u_1_2_border": Condition(
+            domain= circle_border_2,
+            equation= FixedValue(1)),
+        "u_0_2": Condition(
+            domain= outside_circle_2,
+            equation= FixedValue(0))
         }
 
-
 problem = MonodomainProblem()
-
 problem.discretise_domain(mode= "grid", domains=["x_bound_0", "x_bound_1"],
                           sample_rules={'x':{'n': 100, 'mode':'grid'},
                                         'y':{'n': 1, 'mode':'grid'},
@@ -89,46 +105,48 @@ problem.discretise_domain(mode= "grid", domains=["y_bound_0", "y_bound_1"],
                           sample_rules={'x':{'n': 1, 'mode':'grid'},
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20, 'mode':'grid'}})
-problem.discretise_domain(2000, "random", domains=["u_0"])
-problem.discretise_domain(6000, "random", domains=["u_1"])
+problem.discretise_domain(200, "random", domains=["u_0"])
+problem.discretise_domain(500, "random", domains=["u_1"])
+problem.discretise_domain(2000, "random", domains=["u_1_border"])
+problem.discretise_domain(200, "random", domains=["u_0_2"])
+problem.discretise_domain(500, "random", domains=["u_1_2"])
+problem.discretise_domain(2000, "random", domains=["u_1_2_border"])
 problem.discretise_domain(mode="grid", domains=["L_u"], 
                           sample_rules={'x':{'n': 100, 'mode':'grid'},
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20,'mode':'grid'}})
 
-# setting the seed for reproducibility
-
-#from pytorch_lightning import seed_everything
-#seed_everything(42, workers=True)
-
-# build the model
 model = FeedForward(
-    layers=[16,16,16,16],
+    layers=[10,20,20,10],
     func=torch.nn.Tanh, 
     output_dimensions=len(problem.output_variables),
     input_dimensions=len(problem.input_variables),
-)
+    )
 
 from pina.loss import ScalarWeighting
+K_weight = 8
+rho1 = 10/K_weight
+rho2 = 10/(K_weight)**2
+print(rho1,rho2)
 pinn = PINN(
     problem,
     model,
-    optimizer=TorchOptimizer(torch.optim.Adam, lr=1e-4, weight_decay=0),
-    loss=torch.nn.MSELoss(),
-    weighting=ScalarWeighting({"x_bound_0_loss":1,
-                               "x_bound_1_loss":1,
-                               "y_bound_0_loss":1,
-                               "y_bound_1_loss":1,
-                               "L_u_loss":2,
-                               "u_1_loss":4,
-                               "u_0_loss":1
+    optimizer=TorchOptimizer(torch.optim.Adam, lr=1e-3, weight_decay=0),
+    weighting=ScalarWeighting({"x_bound_0_loss":rho1, "x_bound_1_loss":rho1,
+                               "y_bound_0_loss":rho1, "y_bound_1_loss":rho1,
+                               "L_u_loss":rho2, "u_0_loss":rho2,
+                               "u_1_loss":rho2, "u_1_border_loss": rho2,
+                               "u_0_2_loss":rho2,
+                               "u_1_2_loss":rho2, "u_1_2_border_loss": rho2
                                 }),
+
+    loss=torch.nn.MSELoss(),
 )  
 print("\n\n\n\n weights implemented correctly\n\n\n\n")
 from lightning.pytorch.loggers import TensorBoardLogger
 trainer = Trainer(
     solver=pinn,
-    max_epochs= 5000,
+    max_epochs= 2000,
     accelerator="cpu", ##try gpu
     #logger=TensorBoardLogger(save_dir="training_logs"),
     enable_model_summary=False,
