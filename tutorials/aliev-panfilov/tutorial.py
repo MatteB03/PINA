@@ -93,15 +93,17 @@ class MyModel(torch.nn.Module):
             layers=[32]*3, func=torch.nn.Tanh, input_dimensions=1, output_dimensions=1)
         self.space_v = FeedForward(
             layers=[32]*3, func=torch.nn.Tanh, input_dimensions=1, output_dimensions=1)
-        self.coeff_time = torch.nn.Parameter(torch.Tensor([1]))
-        self.known_term = torch.nn.Parameter(torch.Tensor([10]))
+        self.coeff_time_v = torch.nn.Parameter(torch.Tensor([1]))
+        self.coeff_time_w = torch.nn.Parameter(torch.Tensor([1]))
+        self.known_term_v = torch.nn.Parameter(torch.Tensor([0]))
+        self.known_term_w = torch.nn.Parameter(torch.Tensor([10]))
+        self.v_shift = torch.nn.Parameter(torch.Tensor([0]))
+        self.w_shift = torch.nn.Parameter(torch.Tensor([10]))
 
     def forward(self, x):
         x_ = x.extract(["x"])
-        v_shift = 0 
-        w_shift = 20
-        v = self.space_v(x_ + self.known_term - self.coeff_time * (x.extract(["t"]) - v_shift))
-        w = self.space_w(x_ + self.known_term - self.coeff_time * (x.extract(["t"]) - w_shift))
+        v = self.space_v(x_ + self.known_term_v - self.coeff_time_v * (x.extract(["t"]) - self.v_shift))
+        w = self.space_w(x_ + self.known_term_w - self.coeff_time_w * (x.extract(["t"]) - self.w_shift))
 
 
 
@@ -109,30 +111,13 @@ class MyModel(torch.nn.Module):
         v.labels = ["V"]
         w.labels=["W"]
         return torch.cat([v, w], dim=1)
-        #return self.space(x_ - self.coeff_time*x.extract(["t"]))
-
-
-
-        v = self.space_v(x_ - self.coeff_time*(x.extract(["t"])))
-        w = self.space_w(x_  - self.coeff_time*(x.extract(["t"])))
 
 
 
 
 model = MyModel()
 problem_initial = problem
-#problem_initial = TimeSpaceProblem()
-#del problem_initial.conditions["D_V"]
-#del problem_initial.conditions["D_W"]
-#del problem_initial.conditions["gamma1"]
-#del problem_initial.conditions["gamma2"]
-#del problem_initial.conditions["t0_V"]
-#del problem_initial.conditions["t0_W"]
-#problem_initial.discretise_domain(1400, "grid", domains=["t0_V", "t0_W"])
 
-#print(problem_initial.conditions)
-#print(problem_initial.domains)
-#problem_initial.discretise_domain(70,"grid", domains=["D_V","D_W","t0_V","t0_W","gamma1","gamma2"])
 pinn = PINN(
     problem_initial,
     model,
