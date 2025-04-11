@@ -28,11 +28,11 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
     temporal_domain = CartesianDomain({"t": [0, T]})
     circle_border = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]}, sample_surface=True)
     circle = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]})
-    circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]}, sample_surface=True)
-    circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]})
+    circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]}, sample_surface=True)
+    circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]})
 
     outside_circle = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [0,0]}),circle])
-    outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [2.0,2.0]}),circle_2])
+    outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [1.5,1.5]}),circle_2])
 
     
     # defining the ode equation
@@ -48,18 +48,7 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
         res = u_t - D * (u_xx + u_yy) - K* u * (1-u) * (u - alpha)
         return res
     
-    '''def bound_cond_1(input_,output_):
-        D = 3.225
-        u_x = grad(output_, input_, components=["u"], d=["x"])
-        return D * u_x
-    
-    def bound_cond_2(input_,output_):
-        D = 3.225
-        u_y = grad(output_, input_, components=["u"], d=["y"])
-        return D * u_y'''
-    
     # conditions to hold
-    # specify the fixed gradient direction (ex x,y...)
     conditions = {
         "L_u": Condition(
             domain=CartesianDomain({"x":[0,L],"y":[0,L],"t":[0,T]}),
@@ -147,7 +136,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 trainer = Trainer(
     solver=pinn,
     max_epochs= 2000,
-    accelerator="cpu", ##try gpu
+    accelerator="cpu", ##gpu not available in SISSA 
     #logger=TensorBoardLogger(save_dir="training_logs"),
     enable_model_summary=False,
     gradient_clip_val=0.7,
