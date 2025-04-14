@@ -1,22 +1,24 @@
+# file to compare our PINN solution to the solutions already seen in the thesis
+
+# imports
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Load new PINN output
+# load new PINN output
 output_test = torch.load("pinn_output_post_tuning.pt", weights_only=False)
 u_pinn_new = output_test.extract(["u"]).detach().numpy().reshape(50, 50).T  # Reshape to (time, space)
 
-# Load old PINN & FDM output
+# load old PINN & FDM solutions
 data_saved = np.load("saved_full_solution.npz")
 x_pinn_old = data_saved["x"]
 t_pinn_old = data_saved["t"]
 u_pinn_old = data_saved["u_pinn"]
 u_fdm = data_saved["u_fdm"]
 
-# Define spatial grid
 xx = np.linspace(0, 1, num=50, dtype=np.float32)
 
-# Time points for visualization
+# time points to visualize
 t_test = [200, 500, 2000, 5000]
 t_test_indices = [int(t / 10000 * 50) for t in t_test]  # Convert to indices
 

@@ -1,3 +1,7 @@
+# this is a file with very few modifications from the original in the thesis gitlab
+# the main addition is a command at the end to save the PINN solution of the thesis 
+# and the FDM solution, so as to compare them in the plots.py file
+
 #!/usr/bin/env python3
 import tensorflow as tf
 import numpy as np
@@ -95,7 +99,7 @@ for i in range(num_epochs):
     if i % 100 == 0:
         print(f'iter = {i}, mu = {mu.numpy():.2f}, loss_fit = {last_loss_fit.numpy():.6f}, loss_PDE = {last_loss_PDE.numpy():.6f}')
 
-#%%%%%%%%%%%%%%%%%% Post-processing FDM
+# Post-processing FDM
 nt = 10000
 nx = 49
 dx = w / nx
@@ -135,35 +139,5 @@ for i in range(50):
         u0, u = do_timestep(u0, u)
     fdm_solutions_full[i, :] = u.copy()
 
-# Save full solutions
+# Save both solutions
 np.savez("saved_full_solution.npz", x=xx, t=t_vals, u_pinn=pinn_solutions_full, u_fdm=fdm_solutions_full)
-
-#%%%%%%%%%%%%%%%%%% Plot Only 4 Key Time Steps
-fig, axes = plt.subplots(2, 4, figsize=(12, 8))
-
-# Load saved solution
-data_saved = np.load("saved_full_solution.npz")
-u_pinn_saved = data_saved["u_pinn"]
-u_fdm_saved = data_saved["u_fdm"]
-
-for i, t in enumerate(t_test):
-    t_idx = np.searchsorted(t_vals, t * dt)  # Find closest time index
-
-    # Plot new PINN vs FDM
-    ax1 = axes[0, i]
-    ax1.plot(xx, u_pinn_saved[t_idx], "r-", label="New PINN")
-    ax1.plot(xx, u_fdm_saved[t_idx], "k-", label="FDM")
-    ax1.set_title(f"t = {t * dt:.3f}")
-    ax1.set_ylim([-0.1, 1.5])
-    ax1.legend()
-
-    # Plot old PINN vs FDM
-    ax2 = axes[1, i]
-    ax2.plot(xx, u_pinn_saved[t_idx], "b--", label="Saved Old PINN")
-    ax2.plot(xx, u_fdm_saved[t_idx], "k-", label="FDM")
-    ax2.set_ylim([-0.1, 1.5])
-    ax2.legend()
-
-plt.tight_layout()
-plt.savefig("comparison_plot.png")
-plt.show()

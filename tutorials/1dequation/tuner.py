@@ -1,3 +1,4 @@
+# imports
 import warnings
 import torch
 from ray import tune
@@ -21,19 +22,24 @@ from pina.callback import MetricTracker
 from pytorch_lightning import seed_everything
 from pina.optim import TorchOptimizer
 
+############################################################################
+
+# define the problem
 class TimeSpaceProblem(TimeDependentProblem, SpatialProblem):
     output_variables = ["u"]
     spatial_domain = CartesianDomain({"x": [0, 1]})
     temporal_domain = CartesianDomain({"t": [0, 1]})
 
-    # defining the ode equation
+    # define the ode equation
     def equation_4p5(input_, output_):
-        # computing the derivative
+
+        # compute the derivative
         u_t = grad(output_, input_, components=["u"], d=["t"])
+        # compute the laplacian
         nabla_u = laplacian(output_, input_, components=["u"], d=["x"])
+        
         u = output_.extract(["u"])
         gamma = 2
-
         res = u_t - gamma * nabla_u + u**3 - u
         return res
     
@@ -60,6 +66,7 @@ class TimeSpaceProblem(TimeDependentProblem, SpatialProblem):
             equation= FixedValue(0))
         }
 
+# defining the PINN to be tuned
 def Train_PINN(config):
     problem = TimeSpaceProblem()
     problem.discretise_domain(4000, "random", domains=["L_u"])
@@ -78,6 +85,7 @@ def Train_PINN(config):
     optimizer=TorchOptimizer(torch.optim.Adam, lr = 5e-3, weight_decay=0),
     loss=torch.nn.MSELoss()
 )  
+    
     trainer= Trainer(solver, max_epochs=config["epochs"],accelerator="cpu",
     logger=TensorBoardLogger(save_dir="training_logs"),
     enable_progress_bar=False,
@@ -90,18 +98,28 @@ def Train_PINN(config):
 )  
     trainer.train()
     trainer.test()
+
+############################################################################
+
+# choosing the parameters to be tuned
 config = {
-    #"lr":tune.choice([1e-5,2.5e-5,5e-5,1e-4,2.5e-4,5e-4,1e-3,2.5e-3,5e-3]),
     "epochs":tune.choice([5000,7500,10000,12500,15000])
     }
+# this is a quite basic tune I did AFTER tuning the other parameters just to see  
+# how the losses would behave if the model was trained for different epochs
 
+# feel free to vary whatever parameters you prefer, I'll leave you a few simulations I already ran last month 
+
+
+# running a tune to optimize the desired loss
+# ray keeps track of every try running as many as desired/possible
 tune_analysis = tune.run(
     tune.with_parameters(Train_PINN),
     resources_per_trial={"cpu": 1, "gpu": 0},  # Adjust resources as needed
     metric="loss",
     mode="min",
     config=config,
-    num_samples=15,  # Number of trials to run
+    num_samples=15,  # Number of trials to run, each trial randomly chooses a config (might as well have repetitions)
     scheduler=ASHAScheduler(max_t=100, grace_period=10, reduction_factor=2)  # ASHA for early stopping
 )
 best_config = tune_analysis.get_best_config(metric="loss", mode="min")
