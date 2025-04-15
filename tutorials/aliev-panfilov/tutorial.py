@@ -134,7 +134,7 @@ class TimeSpaceProblem(TimeDependentProblem, SpatialProblem):
         #"dataW": Condition(input=input_domain, target=W_0) #these are the additional conditions if you want to train using the first snapshot
     }
 
-# we now assign the problem and discretise its domains 
+# we now instantiate the problem and discretise its domains 
 problem = TimeSpaceProblem()
 # discretise according to the importance and extension of each condition, feel free to change the values here
 problem.discretise_domain(4000, "random", domains=["D_V", "D_W"])
