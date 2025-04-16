@@ -33,14 +33,8 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
     output_variables = ["u"]
     spatial_domain = CartesianDomain({"x": [0, L],"y": [0, L]})
     temporal_domain = CartesianDomain({"t": [0, T]})
-    circle_border = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]}, sample_surface=True)
     circle = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]})
-    circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]}, sample_surface=True)
-    circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]})
-
     outside_circle = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [0,0]}),circle])
-    outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [1.5,1.5]}),circle_2])
-
     
     # defining the ode equation
     def monodomain_equation(input_, output_):
@@ -86,21 +80,10 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
         "u_1": Condition(
             domain= circle,
             equation= FixedValue(1)),
-        "u_1_border": Condition(
-            domain= circle_border,
-            equation= FixedValue(1)),
         "u_0": Condition(
             domain= outside_circle,
-            equation= FixedValue(0)),
-        "u_1_2": Condition(
-            domain= circle_2,
-            equation= FixedValue(1)),
-        "u_1_2_border": Condition(
-            domain= circle_border_2,
-            equation= FixedValue(1)),
-        "u_0_2": Condition(
-            domain= outside_circle_2,
-            equation= FixedValue(0))
+            equation= FixedValue(0)
+        )
         }
 def Train_PINN(config):
 
@@ -115,17 +98,13 @@ def Train_PINN(config):
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20, 'mode':'grid'}})
     problem.discretise_domain(200, "random", domains=["u_0"])
-    problem.discretise_domain(500, "random", domains=["u_1"])
-    problem.discretise_domain(2000, "random", domains=["u_1_border"])
-    problem.discretise_domain(200, "random", domains=["u_0_2"])
-    problem.discretise_domain(500, "random", domains=["u_1_2"])
-    problem.discretise_domain(2000, "random", domains=["u_1_2_border"])
+    problem.discretise_domain(600, "random", domains=["u_1"])
     problem.discretise_domain(mode="grid", domains=["L_u"], 
                           sample_rules={'x':{'n': 100, 'mode':'grid'},
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20,'mode':'grid'}})
     
-    K_weight= config["K"]
+    K_weight= config["K"] #8
     rho1 = 10/K_weight
     rho2 = 10/(K_weight)**2
 
@@ -210,7 +189,7 @@ tune_analysis = tune.run(
     metric="loss",
     mode="min",
     config=config,
-    num_samples=12,  # Number of trials to run
+    num_samples=24,  # Number of trials to run
     scheduler=ASHAScheduler(max_t=100, grace_period=10, reduction_factor=2)  # ASHA for early stopping
 )
 best_config = tune_analysis.get_best_config(metric="loss", mode="min")

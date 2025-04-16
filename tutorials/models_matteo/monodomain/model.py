@@ -1,6 +1,3 @@
-# monodomain equation defined in page 8 of the thesis. for reference see Section 4.2 and 4.3
-
-#imports
 import warnings
 import torch
 
@@ -21,32 +18,22 @@ from pina.optim import TorchOptimizer
 from pytorch_lightning import seed_everything
 seed_everything(42, workers=True)
 
-############################################################################
-
-#space and time upper bounds (lower are 0s)
 L = 100
 T = 2.0
 
-# Here we create the custom geometries we'll be using as initial condition
-# The sampling method in the thesis consists of taking more points in a region 
-# very near the activation front, we do something analogue by sampling a lot of points on the 
-# border at t=[0,0] (not t=0 because later domain discretization would drop the "t" variable)
-circle_border = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]}, sample_surface=True)
-circle = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]})
-outside_circle = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [0,0]}),circle])
-
-# you can see that with only the initial condition and without data our solution seems to be  fading to zero 
-# as time goes on, to try and balance this out we try to add another approximated solution at a later stage
-circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]}, sample_surface=True)
-circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[1.5,1.5]})
-outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [1.5,1.5]}),circle_2])
-
-# here we create the problem
 class MonodomainProblem(TimeDependentProblem, SpatialProblem):
     
     output_variables = ["u"]
     spatial_domain = CartesianDomain({"x": [0, L],"y": [0, L]})
     temporal_domain = CartesianDomain({"t": [0, T]})
+    circle_border = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]}, sample_surface=True)
+    circle = EllipsoidDomain({"x":[L/4,3*L/4], "y":[L/4,3*L/4], "t":[0,0]})
+    circle_border_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]}, sample_surface=True)
+    circle_2 = EllipsoidDomain({"x":[0.05*L,0.95*L], "y":[0.05*L,0.95*L], "t":[2.0,2.0]})
+
+    outside_circle = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [0,0]}),circle])
+    outside_circle_2 = Difference([CartesianDomain({"x": [0, L],"y": [0, L], "t": [2.0,2.0]}),circle_2])
+
     
     # defining the ode equation
     def monodomain_equation(input_, output_):
@@ -61,7 +48,18 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
         res = u_t - D * (u_xx + u_yy) - K* u * (1-u) * (u - alpha)
         return res
     
+    '''def bound_cond_1(input_,output_):
+        D = 3.225
+        u_x = grad(output_, input_, components=["u"], d=["x"])
+        return D * u_x
+    
+    def bound_cond_2(input_,output_):
+        D = 3.225
+        u_y = grad(output_, input_, components=["u"], d=["y"])
+        return D * u_y'''
+    
     # conditions to hold
+    # specify the fixed gradient direction (ex x,y...)
     conditions = {
         "L_u": Condition(
             domain=CartesianDomain({"x":[0,L],"y":[0,L],"t":[0,T]}),
@@ -97,7 +95,7 @@ class MonodomainProblem(TimeDependentProblem, SpatialProblem):
             domain= outside_circle_2,
             equation= FixedValue(0))
         }
-
+#init problem
 problem = MonodomainProblem()
 problem.discretise_domain(mode= "grid", domains=["x_bound_0", "x_bound_1"],
                           sample_rules={'x':{'n': 100, 'mode':'grid'},
@@ -108,7 +106,6 @@ problem.discretise_domain(mode= "grid", domains=["y_bound_0", "y_bound_1"],
                                         'y':{'n': 100, 'mode':'grid'},
                                         't':{'n': 20, 'mode':'grid'}})
 problem.discretise_domain(200, "random", domains=["u_0"])
-# notice that some points might be sampled twice, but this way we can sample on the border and still take a few samples inside for good measure
 problem.discretise_domain(500, "random", domains=["u_1"])
 problem.discretise_domain(2000, "random", domains=["u_1_border"])
 problem.discretise_domain(200, "random", domains=["u_0_2"])
@@ -150,7 +147,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 trainer = Trainer(
     solver=pinn,
     max_epochs= 2000,
-    accelerator="cpu", ##gpu not available in SISSA 
+    accelerator="cpu", ##try gpu
     #logger=TensorBoardLogger(save_dir="training_logs"),
     enable_model_summary=False,
     gradient_clip_val=0.7,

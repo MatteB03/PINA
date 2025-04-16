@@ -140,7 +140,6 @@ problem = TimeSpaceProblem()
 problem.discretise_domain(4000, "random", domains=["D_V", "D_W"])
 problem.discretise_domain(140, "grid", domains=["t0_V", "t0_W"])
 problem.discretise_domain(200, "grid", domains=["gamma2", "gamma1"])
-#problem.discretise_domain(2000, "random", domains=["dataV", "dataW"])
 
 ############################################################################
 
